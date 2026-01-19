@@ -40,6 +40,7 @@ python create_map_poster.py --city <city> --country <country> [options]
 | `--country` | `-C` | Country name | required |
 | `--theme` | `-t` | Theme name | feature_based |
 | `--distance` | `-d` | Map radius in meters | 29000 |
+| `--format` | `-f` | Output format: png (raster) or svg (vector) | png |
 | `--list-themes` | | List all available themes | |
 
 ### Examples
@@ -112,7 +113,8 @@ python create_map_poster.py --list-themes
 
 Posters are saved to `posters/` directory with format:
 ```
-{city}_{theme}_{YYYYMMDD_HHMMSS}.png
+{city}_{theme}_{YYYYMMDD_HHMMSS}.png   # default raster format
+{city}_{theme}_{YYYYMMDD_HHMMSS}.svg   # vector format (--format svg)
 ```
 
 ## Adding Custom Themes
