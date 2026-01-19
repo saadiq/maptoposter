@@ -36,16 +36,16 @@ def load_fonts():
 
 FONTS = load_fonts()
 
-def generate_output_filename(city, theme_name):
+def generate_output_filename(city, theme_name, output_format='png'):
     """
     Generate unique output filename with city, theme, and datetime.
     """
     if not os.path.exists(POSTERS_DIR):
         os.makedirs(POSTERS_DIR)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     city_slug = city.lower().replace(' ', '_')
-    filename = f"{city_slug}_{theme_name}_{timestamp}.png"
+    filename = f"{city_slug}_{theme_name}_{timestamp}.{output_format}"
     return os.path.join(POSTERS_DIR, filename)
 
 def get_available_themes():
@@ -420,6 +420,7 @@ Examples:
     parser.add_argument('--country', '-C', type=str, help='Country name')
     parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
     parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
+    parser.add_argument('--format', '-f', default='png', choices=['png', 'svg'], help='Output format: png (raster) or svg (vector)')
     parser.add_argument('--list-themes', action='store_true', help='List all available themes')
     
     args = parser.parse_args()
@@ -457,7 +458,7 @@ Examples:
     # Get coordinates and generate poster
     try:
         coords = get_coordinates(args.city, args.country)
-        output_file = generate_output_filename(args.city, args.theme)
+        output_file = generate_output_filename(args.city, args.theme, args.format)
         create_poster(args.city, args.country, coords, args.distance, output_file)
         
         print("\n" + "=" * 50)
