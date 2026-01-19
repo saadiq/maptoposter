@@ -367,6 +367,7 @@ Options:
   --country, -C     Country name (required)
   --theme, -t       Theme name (default: feature_based)
   --distance, -d    Map radius in meters (default: 29000)
+  --format, -f      Output format: png (raster) or svg (vector) (default: png)
   --list-themes     List all available themes
 
 Distance guide:
