@@ -1,0 +1,15 @@
+{
+  "name": "Jamaica",
+  "description": "Black, green and gold - golden road network on black, evoking the flag's diagonal cross",
+  "bg": "#0A0A0A",
+  "text": "#D4AF37",
+  "gradient_color": "#0A0A0A",
+  "water": "#0D1F1A",
+  "parks": "#1B4D3E",
+  "road_motorway": "#D4AF37",
+  "road_primary": "#C9A227",
+  "road_secondary": "#A68523",
+  "road_tertiary": "#7A621C",
+  "road_residential": "#4D3D12",
+  "road_default": "#5C4A16"
+}

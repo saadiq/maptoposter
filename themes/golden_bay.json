@@ -1,0 +1,15 @@
+{
+  "name": "Golden Bay",
+  "description": "Golden yellow waters with deep navy landmass - inspired by vintage nautical charts",
+  "bg": "#1E3A5F",
+  "text": "#D4A84B",
+  "gradient_color": "#1E3A5F",
+  "water": "#D4A84B",
+  "parks": "#2B4A6E",
+  "road_motorway": "#FFFFFF",
+  "road_primary": "#F0F0F0",
+  "road_secondary": "#E0E0E0",
+  "road_tertiary": "#D0D0D0",
+  "road_residential": "#C8D8E8",
+  "road_default": "#D0D0D0"
+}
