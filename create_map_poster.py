@@ -223,17 +223,22 @@ def create_poster(city, country, point, dist, output_file):
         G = ox.graph_from_point(point, dist=dist, dist_type='bbox', network_type='all')
         pbar.update(1)
         time.sleep(0.5)  # Rate limit between requests
-        
-        # 2. Fetch Water Features
+
+
+        # 3. Fetch Water Features
         pbar.set_description("Downloading water features")
         try:
-            water = ox.features_from_point(point, tags={'natural': 'water', 'waterway': 'riverbank'}, dist=dist)
+            water = ox.features_from_point(
+                point,
+                tags={'natural': 'water', 'waterway': 'riverbank'},
+                dist=dist
+            )
         except:
             water = None
         pbar.update(1)
         time.sleep(0.3)
-        
-        # 3. Fetch Parks
+
+        # 4. Fetch Parks
         pbar.set_description("Downloading parks/green spaces")
         try:
             parks = ox.features_from_point(point, tags={'leisure': 'park', 'landuse': 'grass'}, dist=dist)
@@ -250,9 +255,12 @@ def create_poster(city, country, point, dist, output_file):
     ax.set_position([0, 0, 1, 1])
     
     # 3. Plot Layers
-    # Layer 1: Polygons
+
+    # Layer 1: Water
     if water is not None and not water.empty:
         water.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+
+    # Layer 2: Parks
     if parks is not None and not parks.empty:
         parks.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=2)
     
