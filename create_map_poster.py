@@ -233,8 +233,7 @@ def create_poster(city, country, point, dist, output_file):
         pbar.update(1)
         time.sleep(0.5)  # Rate limit between requests
 
-
-        # 3. Fetch Water Features
+        # 2. Fetch Water Features
         pbar.set_description("Downloading water features")
         try:
             water = ox.features_from_point(
@@ -242,28 +241,28 @@ def create_poster(city, country, point, dist, output_file):
                 tags={'natural': 'water', 'waterway': 'riverbank'},
                 dist=dist
             )
-        except:
+        except Exception:
             water = None
         pbar.update(1)
         time.sleep(0.3)
 
-        # 4. Fetch Parks
+        # 3. Fetch Parks
         pbar.set_description("Downloading parks/green spaces")
         try:
             parks = ox.features_from_point(point, tags={'leisure': 'park', 'landuse': 'grass'}, dist=dist)
-        except:
+        except Exception:
             parks = None
         pbar.update(1)
     
     print("✓ All data downloaded successfully!")
     
-    # 2. Setup Plot
+    # 4. Setup Plot
     print("Rendering map...")
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg'])
     ax.set_facecolor(THEME['bg'])
     ax.set_position([0, 0, 1, 1])
     
-    # 3. Plot Layers
+    # 5. Plot Layers
 
     # Layer 1: Water
     if water is not None and not water.empty:
@@ -290,18 +289,17 @@ def create_poster(city, country, point, dist, output_file):
     create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=10)
     create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=10)
     
-    # 4. Typography using Roboto font
+    # 6. Typography using Roboto font (fallback to system monospace)
     if FONTS:
         font_main = FontProperties(fname=FONTS['bold'], size=60)
-        font_top = FontProperties(fname=FONTS['bold'], size=40)
         font_sub = FontProperties(fname=FONTS['light'], size=22)
         font_coords = FontProperties(fname=FONTS['regular'], size=14)
+        font_attr = FontProperties(fname=FONTS['light'], size=8)
     else:
-        # Fallback to system fonts
         font_main = FontProperties(family='monospace', weight='bold', size=60)
-        font_top = FontProperties(family='monospace', weight='bold', size=40)
         font_sub = FontProperties(family='monospace', weight='normal', size=22)
         font_coords = FontProperties(family='monospace', size=14)
+        font_attr = FontProperties(family='monospace', size=8)
     
     spaced_city = "  ".join(list(city.upper()))
 
@@ -324,16 +322,11 @@ def create_poster(city, country, point, dist, output_file):
             color=THEME['text'], linewidth=1, zorder=11)
 
     # --- ATTRIBUTION (bottom right) ---
-    if FONTS:
-        font_attr = FontProperties(fname=FONTS['light'], size=8)
-    else:
-        font_attr = FontProperties(family='monospace', size=8)
-    
     ax.text(0.98, 0.02, "© OpenStreetMap contributors", transform=ax.transAxes,
-            color=THEME['text'], alpha=0.5, ha='right', va='bottom', 
+            color=THEME['text'], alpha=0.5, ha='right', va='bottom',
             fontproperties=font_attr, zorder=11)
 
-    # 5. Save
+    # 7. Save
     print(f"Saving to {output_file}...")
     plt.savefig(output_file, dpi=300, facecolor=THEME['bg'])
     plt.close()
@@ -412,7 +405,7 @@ def list_themes():
                 theme_data = json.load(f)
                 display_name = theme_data.get('name', theme_name)
                 description = theme_data.get('description', '')
-        except:
+        except Exception:
             display_name = theme_name
             description = ''
         print(f"  {theme_name}")
