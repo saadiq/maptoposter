@@ -5,12 +5,15 @@ import os
 import sys
 import time
 
+import geopandas as gpd
 from geopy.geocoders import Nominatim
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 import numpy as np
 import osmnx as ox
+from shapely.geometry import box, LineString, Point
+from shapely.ops import polygonize_full, unary_union
 from tqdm import tqdm
 
 THEMES_DIR = "themes"
@@ -224,11 +227,165 @@ def get_coordinates(city, country):
     else:
         raise ValueError(f"Could not find coordinates for {city}, {country}")
 
-def create_poster(city, country, point, dist, output_file):
+def extract_clipped_linestrings(geom, clip_poly):
+    """
+    Extract LineStrings from a geometry, clipped to a bounding polygon.
+    Handles both LineString and MultiLineString geometries.
+    """
+    if geom is None:
+        return []
+
+    result = []
+    # Normalize to list of base geometries
+    geoms_to_process = [geom] if geom.geom_type == 'LineString' else []
+    if geom.geom_type == 'MultiLineString':
+        geoms_to_process = list(geom.geoms)
+
+    for g in geoms_to_process:
+        clipped = g.intersection(clip_poly)
+        if clipped.is_empty:
+            continue
+        if clipped.geom_type == 'LineString':
+            result.append(clipped)
+        elif clipped.geom_type == 'MultiLineString':
+            result.extend(clipped.geoms)
+
+    return result
+
+
+def fetch_land_polygon(point, dist):
+    """
+    Fetch land polygon using OSM coastline data for accurate alignment with roads.
+    Falls back to Natural Earth data if OSM coastlines unavailable.
+    Returns a GeoDataFrame with land geometry, or None on error.
+    """
+    lat, lon = point
+    # Convert meters to approximate degrees
+    lat_delta = dist / 111000
+    lon_delta = dist / (111000 * np.cos(np.radians(lat)))
+
+    bbox_poly = box(
+        lon - lon_delta, lat - lat_delta,
+        lon + lon_delta, lat + lat_delta
+    )
+    minx, miny, maxx, maxy = bbox_poly.bounds
+
+    # Try OSM coastline first
+    try:
+        # Fetch larger area to ensure we get complete coastlines
+        coastlines = ox.features_from_point(
+            point,
+            tags={'natural': 'coastline'},
+            dist=int(dist * 1.5)
+        )
+
+        if coastlines is None or coastlines.empty:
+            # No coastline - inland city, entire bbox is land
+            return gpd.GeoDataFrame({'geometry': [bbox_poly]}, crs='EPSG:4326')
+
+        # Extract and clip linestrings
+        lines = []
+        for geom in coastlines.geometry:
+            lines.extend(extract_clipped_linestrings(geom, bbox_poly))
+
+        if not lines:
+            return gpd.GeoDataFrame({'geometry': [bbox_poly]}, crs='EPSG:4326')
+
+        # Build a complete set of lines: coastlines + bbox edges
+        # Extend coastline endpoints to bbox edges
+        bbox_edges = [
+            LineString([(minx, miny), (maxx, miny)]),  # bottom
+            LineString([(maxx, miny), (maxx, maxy)]),  # right
+            LineString([(maxx, maxy), (minx, maxy)]),  # top
+            LineString([(minx, maxy), (minx, miny)]),  # left
+        ]
+
+        # Combine all lines for polygonization
+        all_lines = lines + bbox_edges
+        combined = unary_union(all_lines)
+
+        # Polygonize - this creates polygons from all enclosed areas
+        polys, dangles, cuts, invalids = polygonize_full(combined)
+        polygons = list(polys.geoms) if polys.geom_type == 'GeometryCollection' else [polys]
+
+        if not polygons:
+            raise Exception("Polygonization failed")
+
+        # Filter to valid polygons within bbox
+        valid_polys = []
+        for p in polygons:
+            if p.is_valid and not p.is_empty and p.area > 0:
+                clipped = p.intersection(bbox_poly)
+                if not clipped.is_empty and clipped.area > 1e-10:
+                    valid_polys.append(clipped)
+
+        if not valid_polys:
+            raise Exception("No valid polygons after clipping")
+
+        # Identify land vs sea
+        # Strategy: find the polygon containing center (definitely land),
+        # then identify the "sea" polygon as the largest one not containing center
+        center = Point(lon, lat)
+
+        # Find the main land polygon (contains center)
+        main_land = None
+        other_polys = []
+        for poly in valid_polys:
+            if poly.contains(center):
+                main_land = poly
+            else:
+                other_polys.append(poly)
+
+        if not main_land:
+            raise Exception("No polygon contains center point")
+
+        # Find the sea polygon - largest polygon that doesn't contain center
+        # and has significant area (> 10% of bbox)
+        sea_poly = None
+        sea_area = 0
+        for poly in other_polys:
+            area_ratio = poly.area / bbox_poly.area
+            if area_ratio > 0.1 and poly.area > sea_area:
+                # Check if this polygon borders the main land (shares coastline)
+                # If it shares a long boundary with main_land, it's likely sea
+                shared = poly.boundary.intersection(main_land.boundary).length
+                if shared > 0.01:  # Has meaningful shared boundary with land
+                    sea_poly = poly
+                    sea_area = poly.area
+
+        # Classify remaining polygons as land or sea
+        land_polys = [main_land]
+        for poly in other_polys:
+            if poly is sea_poly:
+                continue  # Skip the identified sea polygon
+
+            area_ratio = poly.area / bbox_poly.area
+            # Small polygons (< 20% of bbox) are likely islands/land
+            # Or if they don't share boundary with sea, they're land
+            if area_ratio < 0.2:
+                land_polys.append(poly)
+            elif sea_poly is not None:
+                shared_with_sea = poly.boundary.intersection(sea_poly.boundary).length
+                shared_with_land = poly.boundary.intersection(main_land.boundary).length
+                if shared_with_land > shared_with_sea:
+                    land_polys.append(poly)
+
+        if land_polys:
+            land = unary_union(land_polys)
+            return gpd.GeoDataFrame({'geometry': [land]}, crs='EPSG:4326')
+        else:
+            raise Exception("No land polygons identified")
+
+    except Exception as e:
+        print(f"  OSM coastline processing failed: {e}")
+        return None
+
+def create_poster(city, country, point, dist, output_file, show_land=True):
     print(f"\nGenerating map for {city}, {country}...")
-    
+
     # Progress bar for data fetching
-    with tqdm(total=3, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
+    total_steps = 4 if show_land else 3
+    with tqdm(total=total_steps, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
         # 1. Fetch Street Network
         pbar.set_description("Downloading street network")
         G = ox.graph_from_point(point, dist=dist, dist_type='bbox', network_type='all')
@@ -255,16 +412,37 @@ def create_poster(city, country, point, dist, output_file):
         except Exception:
             parks = None
         pbar.update(1)
-    
+
+        # 4. Fetch Land Polygon (for sea/land distinction)
+        if show_land:
+            pbar.set_description("Processing land boundaries")
+            try:
+                land = fetch_land_polygon(point, dist)
+            except Exception as e:
+                print(f"Warning: Could not fetch land polygon: {e}")
+                land = None
+            pbar.update(1)
+        else:
+            land = None
+
     print("✓ All data downloaded successfully!")
-    
-    # 4. Setup Plot
+
+    # 5. Setup Plot
     print("Rendering map...")
-    fig, ax = plt.subplots(figsize=(12, 16), facecolor=THEME['bg'])
-    ax.set_facecolor(THEME['bg'])
+    if show_land:
+        sea_color = THEME.get('sea', THEME['bg'])
+    else:
+        sea_color = THEME['bg']  # Classic style - just background
+    fig, ax = plt.subplots(figsize=(12, 16), facecolor=sea_color)
+    ax.set_facecolor(sea_color)
     ax.set_position([0, 0, 1, 1])
-    
-    # 5. Plot Layers
+
+    # 6. Plot Layers
+
+    # Layer 0.5: Land (drawn over sea background)
+    if land is not None and not land.empty:
+        land_color = THEME.get('land', THEME['bg'])
+        land.plot(ax=ax, facecolor=land_color, edgecolor='none', zorder=0.5)
 
     # Layer 1: Water
     if water is not None and not water.empty:
@@ -273,25 +451,25 @@ def create_poster(city, country, point, dist, output_file):
     # Layer 2: Parks
     if parks is not None and not parks.empty:
         parks.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=2)
-    
-    # Layer 2: Roads with hierarchy coloring
+
+    # Layer 3: Roads with hierarchy coloring
     print("Applying road hierarchy colors...")
     edge_colors = get_edge_colors_by_type(G)
     edge_widths = get_edge_widths_by_type(G)
     
     ox.plot_graph(
-        G, ax=ax, bgcolor=THEME['bg'],
+        G, ax=ax, bgcolor=sea_color,
         node_size=0,
         edge_color=edge_colors,
         edge_linewidth=edge_widths,
         show=False, close=False
     )
-    
-    # Layer 3: Gradients (Top and Bottom)
+
+    # Layer 4: Gradients (Top and Bottom)
     create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=10)
     create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=10)
-    
-    # 6. Typography using Roboto font (fallback to system monospace)
+
+    # 7. Typography using Roboto font (fallback to system monospace)
     if FONTS:
         font_main = FontProperties(fname=FONTS['bold'], size=60)
         font_sub = FontProperties(fname=FONTS['light'], size=22)
@@ -328,9 +506,9 @@ def create_poster(city, country, point, dist, output_file):
             color=THEME['text'], alpha=0.5, ha='right', va='bottom',
             fontproperties=font_attr, zorder=11)
 
-    # 7. Save
+    # 8. Save
     print(f"Saving to {output_file}...")
-    plt.savefig(output_file, dpi=300, facecolor=THEME['bg'])
+    plt.savefig(output_file, dpi=300, facecolor=sea_color)
     plt.close()
     print(f"✓ Done! Poster saved as {output_file}")
 
@@ -380,6 +558,7 @@ Options:
   --theme, -t       Theme name (default: feature_based)
   --distance, -d    Map radius in meters (default: 29000)
   --format, -f      Output format: png (raster) or svg (vector) (default: png)
+  --no-land         Disable land/sea polygons (classic style, faster)
   --list-themes     List all available themes
 
 Distance guide:
@@ -434,6 +613,7 @@ Examples:
     parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
     parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
     parser.add_argument('--format', '-f', default='png', choices=['png', 'svg'], help='Output format: png (raster) or svg (vector)')
+    parser.add_argument('--no-land', action='store_true', help='Disable land/sea polygons (classic style, faster)')
     parser.add_argument('--list-themes', action='store_true', help='List all available themes')
     
     args = parser.parse_args()
@@ -472,7 +652,8 @@ Examples:
     try:
         coords = get_coordinates(args.city, args.country)
         output_file = generate_output_filename(args.city, args.theme, args.format)
-        create_poster(args.city, args.country, coords, args.distance, output_file)
+        create_poster(args.city, args.country, coords, args.distance, output_file,
+                      show_land=not args.no_land)
         
         print("\n" + "=" * 50)
         print("✓ Poster generation complete!")
