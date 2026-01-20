@@ -627,6 +627,9 @@ Examples:
   # Multiple themes (fetches data once, renders multiple posters)
   python create_map_poster.py -c "Paris" -C "France" -t noir midnight_blue sunset -d 10000
 
+  # Custom coordinates (skip geocoding)
+  python create_map_poster.py -c "NYC" -C "USA" --lat 40.7128 --lon -74.0060 -t noir
+
   # List themes
   python create_map_poster.py --list-themes
 
@@ -636,6 +639,8 @@ Options:
   --theme, -t       Theme name(s) - can specify multiple (default: feature_based)
   --distance, -d    Map radius in meters (default: 29000)
   --format, -f      Output format: png (raster) or svg (vector) (default: png)
+  --lat             Latitude (overrides geocoding, requires --lon)
+  --lon             Longitude (overrides geocoding, requires --lat)
   --no-land         Disable land/sea polygons (classic style, faster)
   --list-themes     List all available themes
 
@@ -683,6 +688,7 @@ Examples:
   python create_map_poster.py --city Tokyo --country Japan --theme midnight_blue
   python create_map_poster.py --city Paris --country France --theme noir --distance 15000
   python create_map_poster.py --city Paris --country France -t noir midnight_blue sunset  # Multiple themes
+  python create_map_poster.py --city NYC --country USA --lat 40.7128 --lon -74.0060       # Custom coordinates
   python create_map_poster.py --list-themes
         """
     )
@@ -720,7 +726,16 @@ Examples:
     if (args.lat is None) != (args.lon is None):
         print("Error: --lat and --lon must be provided together.\n")
         sys.exit(1)
-    
+
+    # Validate coordinate ranges
+    if args.lat is not None:
+        if not (-90 <= args.lat <= 90):
+            print(f"Error: Latitude must be between -90 and 90 (got {args.lat}).\n")
+            sys.exit(1)
+        if not (-180 <= args.lon <= 180):
+            print(f"Error: Longitude must be between -180 and 180 (got {args.lon}).\n")
+            sys.exit(1)
+
     # Validate all themes exist
     available_themes = get_available_themes()
     invalid_themes = [t for t in args.theme if t not in available_themes]
