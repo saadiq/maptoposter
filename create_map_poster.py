@@ -51,6 +51,18 @@ def load_fonts():
 
 FONTS = load_fonts()
 
+def create_font(weight, size):
+    """
+    Create FontProperties for the given weight and size.
+    Uses custom Roboto fonts if available, falls back to system monospace.
+    """
+    if FONTS:
+        return FontProperties(fname=FONTS[weight], size=size)
+
+    font_weight = 'bold' if weight == 'bold' else 'normal'
+    return FontProperties(family='monospace', weight=font_weight, size=size)
+
+
 MIN_CITY_FONT_SIZE = 24  # Minimum readable size for city names
 
 
@@ -517,18 +529,11 @@ def render_poster(city, country, point, map_data, theme, output_file, show_land=
     create_gradient_fade(ax, theme['gradient_color'], location='bottom', zorder=10)
     create_gradient_fade(ax, theme['gradient_color'], location='top', zorder=10)
 
-    # Typography using Roboto font (fallback to system monospace)
-    city_font_size = get_city_font_size(city)
-    if FONTS:
-        font_main = FontProperties(fname=FONTS['bold'], size=city_font_size)
-        font_sub = FontProperties(fname=FONTS['light'], size=22)
-        font_coords = FontProperties(fname=FONTS['regular'], size=14)
-        font_attr = FontProperties(fname=FONTS['light'], size=8)
-    else:
-        font_main = FontProperties(family='monospace', weight='bold', size=city_font_size)
-        font_sub = FontProperties(family='monospace', weight='normal', size=22)
-        font_coords = FontProperties(family='monospace', size=14)
-        font_attr = FontProperties(family='monospace', size=8)
+    # Typography
+    font_main = create_font('bold', get_city_font_size(city))
+    font_sub = create_font('light', 22)
+    font_coords = create_font('regular', 14)
+    font_attr = create_font('light', 8)
 
     spaced_city = "  ".join(list(city.upper()))
 
