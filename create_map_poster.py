@@ -41,13 +41,12 @@ def load_fonts():
         'regular': os.path.join(FONTS_DIR, 'Roboto-Regular.ttf'),
         'light': os.path.join(FONTS_DIR, 'Roboto-Light.ttf')
     }
-    
-    # Verify fonts exist
+
     for weight, path in fonts.items():
         if not os.path.exists(path):
-            print(f"⚠ Font not found: {path}")
+            print(f"Warning: Font not found: {path}")
             return None
-    
+
     return fonts
 
 FONTS = load_fonts()
