@@ -8,15 +8,17 @@ City Map Poster Generator - a Python tool that creates minimalist map posters fo
 
 ## Commands
 
+This project uses `uv` for dependency management and running Python.
+
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 
 # Generate a poster
-python create_map_poster.py --city <city> --country <country> [--theme <theme>] [--distance <meters>] [--format png|svg]
+uv run python create_map_poster.py --city <city> --country <country> [--theme <theme>] [--distance <meters>] [--format png|svg] [--no-land]
 
 # List available themes
-python create_map_poster.py --list-themes
+uv run python create_map_poster.py --list-themes
 ```
 
 ## Architecture
@@ -28,8 +30,9 @@ CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render
 ```
 
 **Rendering layers (z-order):**
-- z=0: Background color
-- z=1: Water polygons
+- z=0: Sea color (background)
+- z=0.5: Land polygons (OSM coastline data)
+- z=1: Water polygons (rivers, lakes from OSM)
 - z=2: Parks polygons
 - z=3: Street network (via `ox.plot_graph`)
 - z=10: Gradient fades (top/bottom)
@@ -37,6 +40,7 @@ CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render
 
 **Key functions:**
 - `get_coordinates()` - Geocodes city/country via Nominatim
+- `fetch_land_polygon()` - Fetches land boundaries from OSM coastline data
 - `create_poster()` - Main pipeline: fetches OSM data, renders layers, saves output
 - `get_edge_colors_by_type()` / `get_edge_widths_by_type()` - Maps OSM highway tags to styling
 - `load_theme()` - Loads JSON theme with fallback defaults
@@ -44,8 +48,10 @@ CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render
 ## Theme System
 
 Themes are JSON files in `themes/` directory. Required properties:
-- `bg`, `text`, `gradient_color`, `water`, `parks`
+- `bg`, `text`, `gradient_color`, `water`, `parks`, `sea`, `land`
 - Road colors: `road_motorway`, `road_primary`, `road_secondary`, `road_tertiary`, `road_residential`, `road_default`
+
+For coastal cities, `sea` defines ocean color and `land` defines landmass color. For inland cities, land covers the entire map. Themes without `sea`/`land` fall back to `bg` color.
 
 ## Adding Map Layers
 
