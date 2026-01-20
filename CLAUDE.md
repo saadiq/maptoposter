@@ -17,6 +17,9 @@ uv sync
 # Generate a poster (single theme)
 uv run python create_map_poster.py --city <city> --country <country> [--theme <theme>] [--distance <meters>] [--format png|svg] [--no-land]
 
+# Generate with custom coordinates (skip geocoding)
+uv run python create_map_poster.py --city <city> --country <country> --lat <latitude> --lon <longitude> [--theme <theme>]
+
 # Generate multiple posters (fetches data once, renders with each theme)
 uv run python create_map_poster.py --city <city> --country <country> -t theme1 theme2 theme3 [--distance <meters>]
 
@@ -29,7 +32,7 @@ uv run python create_map_poster.py --list-themes
 Single-file application (`create_map_poster.py`) with this pipeline:
 
 ```
-CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render (matplotlib) → PNG/SVG Output
+CLI (argparse) → Geocoding (Nominatim/geopy, or --lat/--lon override) → Data Fetch (OSMnx) → Render (matplotlib) → PNG/SVG Output
 ```
 
 **Multi-theme support:** Data is fetched once via `fetch_map_data()`, then `render_poster()` is called for each theme. This avoids redundant API calls when generating multiple poster variants.
