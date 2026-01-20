@@ -695,6 +695,8 @@ Examples:
     parser.add_argument('--format', '-f', default='png', choices=['png', 'svg'], help='Output format: png (raster) or svg (vector)')
     parser.add_argument('--no-land', action='store_true', help='Disable land/sea polygons (classic style, faster)')
     parser.add_argument('--list-themes', action='store_true', help='List all available themes')
+    parser.add_argument('--lat', type=float, help='Latitude (overrides geocoding)')
+    parser.add_argument('--lon', type=float, help='Longitude (overrides geocoding)')
     
     args = parser.parse_args()
     
@@ -713,6 +715,11 @@ Examples:
         print("Error: --city and --country are required.\n")
         print_examples()
         sys.exit(1)
+
+    # Validate lat/lon: both must be provided together
+    if (args.lat is None) != (args.lon is None):
+        print("Error: --lat and --lon must be provided together.\n")
+        sys.exit(1)
     
     # Validate all themes exist
     available_themes = get_available_themes()
@@ -728,7 +735,12 @@ Examples:
 
     # Get coordinates and generate poster(s)
     try:
-        coords = get_coordinates(args.city, args.country)
+        # Validation above ensures lat/lon are either both set or both None
+        if args.lat is not None:
+            coords = (args.lat, args.lon)
+            print(f"Using provided coordinates: {args.lat}, {args.lon}")
+        else:
+            coords = get_coordinates(args.city, args.country)
 
         # Fetch map data once
         print(f"\nGenerating map for {args.city}, {args.country}...")
