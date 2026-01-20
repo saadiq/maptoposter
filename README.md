@@ -41,6 +41,8 @@ python create_map_poster.py --city <city> --country <country> [options]
 | `--theme` | `-t` | Theme name(s) - can specify multiple | feature_based |
 | `--distance` | `-d` | Map radius in meters | 29000 |
 | `--format` | `-f` | Output format: png (raster) or svg (vector) | png |
+| `--lat` | | Latitude (overrides geocoding, requires --lon) | |
+| `--lon` | | Longitude (overrides geocoding, requires --lat) | |
 | `--no-land` | | Disable land/sea polygons (classic style, faster) | |
 | `--list-themes` | | List all available themes | |
 
@@ -76,6 +78,9 @@ python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000 
 
 # Multiple themes (fetches data once, generates multiple posters)
 python create_map_poster.py -c "Paris" -C "France" -t noir midnight_blue sunset -d 10000
+
+# Custom coordinates (skip geocoding lookup)
+python create_map_poster.py -c "NYC" -C "USA" --lat 40.7128 --lon -74.0060 -t noir
 
 # List available themes
 python create_map_poster.py --list-themes
@@ -163,7 +168,8 @@ Quick reference for contributors who want to extend or modify the script.
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
 │   CLI Parser    │────▶│  Geocoding   │────▶│  Data Fetching  │
-│   (argparse)    │     │  (Nominatim) │     │    (OSMnx)      │
+│   (argparse)    │     │  (Nominatim  │     │    (OSMnx)      │
+│                 │     │ or --lat/lon)│     │                 │
 └─────────────────┘     └──────────────┘     └─────────────────┘
                                                      │
                         ┌──────────────┐             ▼
