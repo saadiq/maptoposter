@@ -112,8 +112,8 @@ def load_theme(theme_name="feature_based"):
             print(f"  {theme['description']}")
         return theme
 
-# Load theme (can be changed via command line or input)
-THEME = None  # Will be loaded later
+# Global theme for backwards compatibility with create_poster()
+THEME = None
 
 def create_gradient_fade(ax, color, location='bottom', zorder=10):
     """
@@ -190,19 +190,17 @@ def get_highway_type(data):
     return highway
 
 
-def get_edge_colors_by_type(G):
+def get_edge_colors_by_type(G, theme):
     """
     Assigns colors to edges based on road type hierarchy.
     Returns a list of colors corresponding to each edge in the graph.
     """
-    if THEME is None:
-        raise RuntimeError("THEME not loaded. Call load_theme() before get_edge_colors_by_type().")
     edge_colors = []
     for u, v, data in G.edges(data=True):
         highway = get_highway_type(data)
         category = get_road_category(highway)
         theme_key = f'road_{category}'
-        color = THEME.get(theme_key, THEME['road_default'])
+        color = theme.get(theme_key, theme['road_default'])
         edge_colors.append(color)
     return edge_colors
 
@@ -394,10 +392,12 @@ def fetch_land_polygon(point, dist):
         print(f"  OSM coastline processing failed: {e}")
         return None
 
-def create_poster(city, country, point, dist, output_file, show_land=True):
-    if THEME is None:
-        raise RuntimeError("THEME not loaded. Call load_theme() before create_poster().")
-    print(f"\nGenerating map for {city}, {country}...")
+def fetch_map_data(point, dist, show_land=True):
+    """
+    Fetch all map data (streets, water, parks, land) from OpenStreetMap.
+    Returns a dict with all the fetched data for rendering.
+    """
+    print("Fetching map data...")
 
     # Progress bar for data fetching
     total_steps = 4 if show_land else 3
@@ -443,36 +443,53 @@ def create_poster(city, country, point, dist, output_file, show_land=True):
 
     print("✓ All data downloaded successfully!")
 
-    # 5. Setup Plot
+    return {
+        'G': G,
+        'water': water,
+        'parks': parks,
+        'land': land
+    }
+
+
+def render_poster(city, country, point, map_data, theme, output_file, show_land=True):
+    """
+    Render a poster from pre-fetched map data using the specified theme.
+    """
+    G = map_data['G']
+    water = map_data['water']
+    parks = map_data['parks']
+    land = map_data['land']
+
+    # Setup Plot
     print("Rendering map...")
     if show_land:
-        sea_color = THEME.get('sea', THEME['bg'])
+        sea_color = theme.get('sea', theme['bg'])
     else:
-        sea_color = THEME['bg']  # Classic style - just background
+        sea_color = theme['bg']  # Classic style - just background
     fig, ax = plt.subplots(figsize=(12, 16), facecolor=sea_color)
     ax.set_facecolor(sea_color)
     ax.set_position([0, 0, 1, 1])
 
-    # 6. Plot Layers
+    # Plot Layers
 
     # Layer 0.5: Land (drawn over sea background)
     if land is not None and not land.empty:
-        land_color = THEME.get('land', THEME['bg'])
+        land_color = theme.get('land', theme['bg'])
         land.plot(ax=ax, facecolor=land_color, edgecolor='none', zorder=0.5)
 
     # Layer 1: Water
     if water is not None and not water.empty:
-        water.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+        water.plot(ax=ax, facecolor=theme['water'], edgecolor='none', zorder=1)
 
     # Layer 2: Parks
     if parks is not None and not parks.empty:
-        parks.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=2)
+        parks.plot(ax=ax, facecolor=theme['parks'], edgecolor='none', zorder=2)
 
     # Layer 3: Roads with hierarchy coloring
     print("Applying road hierarchy colors...")
-    edge_colors = get_edge_colors_by_type(G)
+    edge_colors = get_edge_colors_by_type(G, theme)
     edge_widths = get_edge_widths_by_type(G)
-    
+
     ox.plot_graph(
         G, ax=ax, bgcolor=sea_color,
         node_size=0,
@@ -482,10 +499,10 @@ def create_poster(city, country, point, dist, output_file, show_land=True):
     )
 
     # Layer 4: Gradients (Top and Bottom)
-    create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=10)
-    create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=10)
+    create_gradient_fade(ax, theme['gradient_color'], location='bottom', zorder=10)
+    create_gradient_fade(ax, theme['gradient_color'], location='top', zorder=10)
 
-    # 7. Typography using Roboto font (fallback to system monospace)
+    # Typography using Roboto font (fallback to system monospace)
     if FONTS:
         font_main = FontProperties(fname=FONTS['bold'], size=60)
         font_sub = FontProperties(fname=FONTS['light'], size=22)
@@ -496,37 +513,53 @@ def create_poster(city, country, point, dist, output_file, show_land=True):
         font_sub = FontProperties(family='monospace', weight='normal', size=22)
         font_coords = FontProperties(family='monospace', size=14)
         font_attr = FontProperties(family='monospace', size=8)
-    
+
     spaced_city = "  ".join(list(city.upper()))
 
     # --- BOTTOM TEXT ---
     ax.text(0.5, 0.14, spaced_city, transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_main, zorder=11)
-    
+            color=theme['text'], ha='center', fontproperties=font_main, zorder=11)
+
     ax.text(0.5, 0.10, country.upper(), transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_sub, zorder=11)
-    
+            color=theme['text'], ha='center', fontproperties=font_sub, zorder=11)
+
     lat, lon = point
     lat_dir = "N" if lat >= 0 else "S"
     lon_dir = "E" if lon >= 0 else "W"
     coords = f"{abs(lat):.4f}° {lat_dir} / {abs(lon):.4f}° {lon_dir}"
-    
+
     ax.text(0.5, 0.07, coords, transform=ax.transAxes,
-            color=THEME['text'], alpha=0.7, ha='center', fontproperties=font_coords, zorder=11)
-    
-    ax.plot([0.4, 0.6], [0.125, 0.125], transform=ax.transAxes, 
-            color=THEME['text'], linewidth=1, zorder=11)
+            color=theme['text'], alpha=0.7, ha='center', fontproperties=font_coords, zorder=11)
+
+    ax.plot([0.4, 0.6], [0.125, 0.125], transform=ax.transAxes,
+            color=theme['text'], linewidth=1, zorder=11)
 
     # --- ATTRIBUTION (bottom right) ---
     ax.text(0.98, 0.02, "© OpenStreetMap contributors", transform=ax.transAxes,
-            color=THEME['text'], alpha=0.5, ha='right', va='bottom',
+            color=theme['text'], alpha=0.5, ha='right', va='bottom',
             fontproperties=font_attr, zorder=11)
 
-    # 8. Save
+    # Save
     print(f"Saving to {output_file}...")
     plt.savefig(output_file, dpi=300, facecolor=sea_color)
     plt.close()
     print(f"✓ Done! Poster saved as {output_file}")
+
+
+def create_poster(city, country, point, dist, output_file, theme=None, show_land=True):
+    """
+    Convenience function that fetches map data and renders a poster in one call.
+    Accepts an optional theme dict; if not provided, uses the global THEME.
+    """
+    if theme is None:
+        if THEME is None:
+            raise RuntimeError("THEME not loaded. Call load_theme() or pass a theme dict.")
+        theme = THEME
+
+    print(f"\nGenerating map for {city}, {country}...")
+    map_data = fetch_map_data(point, dist, show_land)
+    render_poster(city, country, point, map_data, theme, output_file, show_land)
+
 
 def print_examples():
     """Print usage examples."""
@@ -564,14 +597,17 @@ Examples:
   # River cities
   python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
   python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
-  
+
+  # Multiple themes (fetches data once, renders multiple posters)
+  python create_map_poster.py -c "Paris" -C "France" -t noir midnight_blue sunset -d 10000
+
   # List themes
   python create_map_poster.py --list-themes
 
 Options:
   --city, -c        City name (required)
   --country, -C     Country name (required)
-  --theme, -t       Theme name (default: feature_based)
+  --theme, -t       Theme name(s) - can specify multiple (default: feature_based)
   --distance, -d    Map radius in meters (default: 29000)
   --format, -f      Output format: png (raster) or svg (vector) (default: png)
   --no-land         Disable land/sea polygons (classic style, faster)
@@ -620,13 +656,15 @@ Examples:
   python create_map_poster.py --city "New York" --country "USA"
   python create_map_poster.py --city Tokyo --country Japan --theme midnight_blue
   python create_map_poster.py --city Paris --country France --theme noir --distance 15000
+  python create_map_poster.py --city Paris --country France -t noir midnight_blue sunset  # Multiple themes
   python create_map_poster.py --list-themes
         """
     )
     
     parser.add_argument('--city', '-c', type=str, help='City name')
     parser.add_argument('--country', '-C', type=str, help='Country name')
-    parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
+    parser.add_argument('--theme', '-t', type=str, nargs='+', default=['feature_based'],
+                        help='Theme name(s) - can specify multiple (default: feature_based)')
     parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
     parser.add_argument('--format', '-f', default='png', choices=['png', 'svg'], help='Output format: png (raster) or svg (vector)')
     parser.add_argument('--no-land', action='store_true', help='Disable land/sea polygons (classic style, faster)')
@@ -650,31 +688,39 @@ Examples:
         print_examples()
         sys.exit(1)
     
-    # Validate theme exists
+    # Validate all themes exist
     available_themes = get_available_themes()
-    if args.theme not in available_themes:
-        print(f"Error: Theme '{args.theme}' not found.")
+    invalid_themes = [t for t in args.theme if t not in available_themes]
+    if invalid_themes:
+        print(f"Error: Theme(s) not found: {', '.join(invalid_themes)}")
         print(f"Available themes: {', '.join(available_themes)}")
         sys.exit(1)
-    
+
     print("=" * 50)
     print("City Map Poster Generator")
     print("=" * 50)
-    
-    # Load theme
-    THEME = load_theme(args.theme)
-    
-    # Get coordinates and generate poster
+
+    # Get coordinates and generate poster(s)
     try:
         coords = get_coordinates(args.city, args.country)
-        output_file = generate_output_filename(args.city, args.theme, args.format)
-        create_poster(args.city, args.country, coords, args.distance, output_file,
-                      show_land=not args.no_land)
-        
+
+        # Fetch map data once
+        print(f"\nGenerating map for {args.city}, {args.country}...")
+        show_land = not args.no_land
+        map_data = fetch_map_data(coords, args.distance, show_land)
+
+        # Render poster for each theme
+        for theme_name in args.theme:
+            print(f"\n--- Rendering with theme: {theme_name} ---")
+            theme = load_theme(theme_name)
+            output_file = generate_output_filename(args.city, theme_name, args.format)
+            render_poster(args.city, args.country, coords, map_data, theme, output_file,
+                          show_land=show_land)
+
         print("\n" + "=" * 50)
-        print("✓ Poster generation complete!")
+        print(f"✓ Poster generation complete! ({len(args.theme)} poster(s) created)")
         print("=" * 50)
-        
+
     except Exception as e:
         print(f"\n✗ Error: {e}")
         import traceback
