@@ -130,8 +130,49 @@ def create_gradient_fade(ax, color, location='bottom', zorder=10):
     y_bottom = ylim[0] + y_range * extent_y_start
     y_top = ylim[0] + y_range * extent_y_end
     
-    ax.imshow(gradient, extent=[xlim[0], xlim[1], y_bottom, y_top], 
+    ax.imshow(gradient, extent=[xlim[0], xlim[1], y_bottom, y_top],
               aspect='auto', cmap=custom_cmap, zorder=zorder, origin='lower')
+
+# Road type classification mapping
+ROAD_CATEGORIES = {
+    'motorway': ['motorway', 'motorway_link'],
+    'primary': ['trunk', 'trunk_link', 'primary', 'primary_link'],
+    'secondary': ['secondary', 'secondary_link'],
+    'tertiary': ['tertiary', 'tertiary_link'],
+    'residential': ['residential', 'living_street', 'unclassified'],
+}
+
+ROAD_WIDTHS = {
+    'motorway': 1.2,
+    'primary': 1.0,
+    'secondary': 0.8,
+    'tertiary': 0.6,
+    'residential': 0.4,
+    'default': 0.4,
+}
+
+
+def get_road_category(highway):
+    """
+    Classify a highway type into a road category.
+    Returns one of: motorway, primary, secondary, tertiary, residential, or default.
+    """
+    for category, types in ROAD_CATEGORIES.items():
+        if highway in types:
+            return category
+    return 'default'
+
+
+def get_highway_type(data):
+    """
+    Extract normalized highway type from edge data.
+    Handles both string and list values from OSM.
+    """
+    highway = data.get('highway', 'unclassified')
+    if isinstance(highway, list):
+        return highway[0] if highway else 'unclassified'
+    return highway
+
 
 def get_edge_colors_by_type(G):
     """
@@ -139,32 +180,14 @@ def get_edge_colors_by_type(G):
     Returns a list of colors corresponding to each edge in the graph.
     """
     edge_colors = []
-    
     for u, v, data in G.edges(data=True):
-        # Get the highway type (can be a list or string)
-        highway = data.get('highway', 'unclassified')
-        
-        # Handle list of highway types (take the first one)
-        if isinstance(highway, list):
-            highway = highway[0] if highway else 'unclassified'
-        
-        # Assign color based on road type
-        if highway in ['motorway', 'motorway_link']:
-            color = THEME['road_motorway']
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link']:
-            color = THEME['road_primary']
-        elif highway in ['secondary', 'secondary_link']:
-            color = THEME['road_secondary']
-        elif highway in ['tertiary', 'tertiary_link']:
-            color = THEME['road_tertiary']
-        elif highway in ['residential', 'living_street', 'unclassified']:
-            color = THEME['road_residential']
-        else:
-            color = THEME['road_default']
-        
+        highway = get_highway_type(data)
+        category = get_road_category(highway)
+        theme_key = f'road_{category}'
+        color = THEME.get(theme_key, THEME['road_default'])
         edge_colors.append(color)
-    
     return edge_colors
+
 
 def get_edge_widths_by_type(G):
     """
@@ -172,27 +195,11 @@ def get_edge_widths_by_type(G):
     Major roads get thicker lines.
     """
     edge_widths = []
-    
     for u, v, data in G.edges(data=True):
-        highway = data.get('highway', 'unclassified')
-        
-        if isinstance(highway, list):
-            highway = highway[0] if highway else 'unclassified'
-        
-        # Assign width based on road importance
-        if highway in ['motorway', 'motorway_link']:
-            width = 1.2
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link']:
-            width = 1.0
-        elif highway in ['secondary', 'secondary_link']:
-            width = 0.8
-        elif highway in ['tertiary', 'tertiary_link']:
-            width = 0.6
-        else:
-            width = 0.4
-        
+        highway = get_highway_type(data)
+        category = get_road_category(highway)
+        width = ROAD_WIDTHS.get(category, ROAD_WIDTHS['default'])
         edge_widths.append(width)
-    
     return edge_widths
 
 def get_coordinates(city, country):
