@@ -6,6 +6,8 @@
   "gradient_color": "#0D0D1A",
   "water": "#0A0A15",
   "parks": "#151525",
+  "sea": "#0A0A1A",
+  "land": "#0D0D1F",
   "road_motorway": "#FF00FF",
   "road_primary": "#00FFFF",
   "road_secondary": "#00C8C8",

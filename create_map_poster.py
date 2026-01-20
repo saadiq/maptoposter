@@ -81,6 +81,8 @@ def load_theme(theme_name="feature_based"):
             "gradient_color": "#FFFFFF",
             "water": "#C0C0C0",
             "parks": "#F0F0F0",
+            "sea": "#E8F4F8",
+            "land": "#FFFFFF",
             "road_motorway": "#0A0A0A",
             "road_primary": "#1A1A1A",
             "road_secondary": "#2A2A2A",
