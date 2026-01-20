@@ -1,0 +1,17 @@
+{
+  "name": "Nordic Fjord",
+  "description": "Cold slate waters, deep navy depths, golden light from distant windows",
+  "bg": "#3A4550",
+  "text": "#E8DCC8",
+  "gradient_color": "#3A4550",
+  "water": "#2A3540",
+  "parks": "#2A3A35",
+  "sea": "#1A2530",
+  "land": "#4A5560",
+  "road_motorway": "#D4A44A",
+  "road_primary": "#C49858",
+  "road_secondary": "#8A8878",
+  "road_tertiary": "#6A6A68",
+  "road_residential": "#5A5A5A",
+  "road_default": "#7A7A78"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Mediterranean Noon",
+  "description": "Bleached white walls, deep shadows, terracotta heat - siesta hour on the coast",
+  "bg": "#F8F6F1",
+  "text": "#2A3D4D",
+  "gradient_color": "#F8F6F1",
+  "water": "#1E4D6B",
+  "parks": "#4A6B5A",
+  "sea": "#1A3D5C",
+  "land": "#FAF8F3",
+  "road_motorway": "#C45C3E",
+  "road_primary": "#D4785A",
+  "road_secondary": "#B8A090",
+  "road_tertiary": "#D0C8BE",
+  "road_residential": "#E8E4DC",
+  "road_default": "#D0C8BE"
+}

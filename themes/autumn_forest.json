@@ -1,0 +1,17 @@
+{
+  "name": "Late October",
+  "description": "Overcast afternoon - wet roads, dark evergreens, last maple color before the grey sets in",
+  "bg": "#4A5048",
+  "text": "#E8DDD0",
+  "gradient_color": "#4A5048",
+  "water": "#3A4550",
+  "parks": "#2A3A2D",
+  "sea": "#2A3540",
+  "land": "#5A5D58",
+  "road_motorway": "#D4722A",
+  "road_primary": "#C4844A",
+  "road_secondary": "#8A8078",
+  "road_tertiary": "#6A6860",
+  "road_residential": "#5A5850",
+  "road_default": "#787068"
+}

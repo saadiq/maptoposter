@@ -1,0 +1,17 @@
+{
+  "name": "Tropical Dusk",
+  "description": "Ten minutes after sunset - magenta sky fading, sea holding the last teal light, roads still warm",
+  "bg": "#2D1F3D",
+  "text": "#F0C8B0",
+  "gradient_color": "#2D1F3D",
+  "water": "#1A4A5A",
+  "parks": "#1F3D3A",
+  "sea": "#0F3545",
+  "land": "#3A2845",
+  "road_motorway": "#E85A8A",
+  "road_primary": "#D46A7A",
+  "road_secondary": "#A85A6A",
+  "road_tertiary": "#6A4A5A",
+  "road_residential": "#4A3848",
+  "road_default": "#7A5A68"
+}

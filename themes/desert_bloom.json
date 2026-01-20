@@ -1,0 +1,17 @@
+{
+  "name": "Desert at Dawn",
+  "description": "Pre-sunrise stillness - cool lavender sand, first warm light catching the ridges",
+  "bg": "#D8D0D8",
+  "text": "#5A3A2A",
+  "gradient_color": "#D8D0D8",
+  "water": "#6A8A98",
+  "parks": "#8A9A7A",
+  "sea": "#5A7888",
+  "land": "#E0D8DC",
+  "road_motorway": "#D87848",
+  "road_primary": "#C88868",
+  "road_secondary": "#B8A090",
+  "road_tertiary": "#C8C0C0",
+  "road_residential": "#D8D0D0",
+  "road_default": "#C0B8B8"
+}
