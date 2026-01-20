@@ -112,7 +112,8 @@ def load_theme(theme_name="feature_based"):
             print(f"  {theme['description']}")
         return theme
 
-# Global theme for backwards compatibility with create_poster()
+# Global theme variable - only used when calling create_poster() without a theme argument.
+# The CLI and recommended usage pass themes directly to render_poster().
 THEME = None
 
 def create_gradient_fade(ax, color, location='bottom', zorder=10):
@@ -549,7 +550,12 @@ def render_poster(city, country, point, map_data, theme, output_file, show_land=
 def create_poster(city, country, point, dist, output_file, theme=None, show_land=True):
     """
     Convenience function that fetches map data and renders a poster in one call.
-    Accepts an optional theme dict; if not provided, uses the global THEME.
+
+    For multi-theme generation, use fetch_map_data() + render_poster() directly
+    to avoid redundant data fetching.
+
+    Args:
+        theme: Optional theme dict. If None, falls back to global THEME variable.
     """
     if theme is None:
         if THEME is None:
