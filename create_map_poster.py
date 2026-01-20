@@ -51,6 +51,21 @@ def load_fonts():
 
 FONTS = load_fonts()
 
+MIN_CITY_FONT_SIZE = 24  # Minimum readable size for city names
+
+
+def get_city_font_size(city_name, base_size=60, max_chars=8):
+    """
+    Scale font size down for longer city names.
+    Names <= max_chars get full base_size, longer names scale proportionally.
+    """
+    if len(city_name) <= max_chars:
+        return base_size
+
+    scaled_size = base_size * max_chars / len(city_name)
+    return max(scaled_size, MIN_CITY_FONT_SIZE)
+
+
 def generate_output_filename(city, theme_name, output_format='png'):
     """
     Generate unique output filename with city, theme, and datetime.
@@ -503,13 +518,14 @@ def render_poster(city, country, point, map_data, theme, output_file, show_land=
     create_gradient_fade(ax, theme['gradient_color'], location='top', zorder=10)
 
     # Typography using Roboto font (fallback to system monospace)
+    city_font_size = get_city_font_size(city)
     if FONTS:
-        font_main = FontProperties(fname=FONTS['bold'], size=60)
+        font_main = FontProperties(fname=FONTS['bold'], size=city_font_size)
         font_sub = FontProperties(fname=FONTS['light'], size=22)
         font_coords = FontProperties(fname=FONTS['regular'], size=14)
         font_attr = FontProperties(fname=FONTS['light'], size=8)
     else:
-        font_main = FontProperties(family='monospace', weight='bold', size=60)
+        font_main = FontProperties(family='monospace', weight='bold', size=city_font_size)
         font_sub = FontProperties(family='monospace', weight='normal', size=22)
         font_coords = FontProperties(family='monospace', size=14)
         font_attr = FontProperties(family='monospace', size=8)
