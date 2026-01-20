@@ -38,9 +38,10 @@ python create_map_poster.py --city <city> --country <country> [options]
 |--------|-------|-------------|---------|
 | `--city` | `-c` | City name | required |
 | `--country` | `-C` | Country name | required |
-| `--theme` | `-t` | Theme name | feature_based |
+| `--theme` | `-t` | Theme name(s) - can specify multiple | feature_based |
 | `--distance` | `-d` | Map radius in meters | 29000 |
 | `--format` | `-f` | Output format: png (raster) or svg (vector) | png |
+| `--no-land` | | Disable land/sea polygons (classic style, faster) | |
 | `--list-themes` | | List all available themes | |
 
 ### Examples
@@ -72,6 +73,9 @@ python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # 
 # River cities
 python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
 python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
+
+# Multiple themes (fetches data once, generates multiple posters)
+python create_map_poster.py -c "Paris" -C "France" -t noir midnight_blue sunset -d 10000
 
 # List available themes
 python create_map_poster.py --list-themes
@@ -174,7 +178,9 @@ Quick reference for contributors who want to extend or modify the script.
 | Function | Purpose | Modify when... |
 |----------|---------|----------------|
 | `get_coordinates()` | City → lat/lon via Nominatim | Switching geocoding provider |
-| `create_poster()` | Main rendering pipeline | Adding new map layers |
+| `fetch_map_data()` | Fetches streets, water, parks, land from OSM | Adding new data layers |
+| `render_poster()` | Renders poster from pre-fetched data + theme | Changing render logic |
+| `create_poster()` | Convenience wrapper (fetch + render) | Single-call generation |
 | `get_edge_colors_by_type()` | Road color by OSM highway tag | Changing road styling |
 | `get_edge_widths_by_type()` | Road width by importance | Adjusting line weights |
 | `create_gradient_fade()` | Top/bottom fade effect | Modifying gradient overlay |

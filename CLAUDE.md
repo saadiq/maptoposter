@@ -14,8 +14,11 @@ This project uses `uv` for dependency management and running Python.
 # Install dependencies
 uv sync
 
-# Generate a poster
+# Generate a poster (single theme)
 uv run python create_map_poster.py --city <city> --country <country> [--theme <theme>] [--distance <meters>] [--format png|svg] [--no-land]
+
+# Generate multiple posters (fetches data once, renders with each theme)
+uv run python create_map_poster.py --city <city> --country <country> -t theme1 theme2 theme3 [--distance <meters>]
 
 # List available themes
 uv run python create_map_poster.py --list-themes
@@ -29,6 +32,8 @@ Single-file application (`create_map_poster.py`) with this pipeline:
 CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render (matplotlib) → PNG/SVG Output
 ```
 
+**Multi-theme support:** Data is fetched once via `fetch_map_data()`, then `render_poster()` is called for each theme. This avoids redundant API calls when generating multiple poster variants.
+
 **Rendering layers (z-order):**
 - z=0: Sea color (background)
 - z=0.5: Land polygons (OSM coastline data)
@@ -41,8 +46,10 @@ CLI (argparse) → Geocoding (Nominatim/geopy) → Data Fetch (OSMnx) → Render
 **Key functions:**
 - `get_coordinates()` - Geocodes city/country via Nominatim
 - `fetch_land_polygon()` - Fetches land boundaries from OSM coastline data
-- `create_poster()` - Main pipeline: fetches OSM data, renders layers, saves output
-- `get_edge_colors_by_type()` / `get_edge_widths_by_type()` - Maps OSM highway tags to styling
+- `fetch_map_data(point, dist, show_land)` - Fetches all OSM data (streets, water, parks, land), returns dict
+- `render_poster(city, country, point, map_data, theme, output_file, show_land)` - Renders poster from pre-fetched data
+- `create_poster(city, country, point, dist, output_file, theme, show_land)` - Convenience wrapper that fetches and renders in one call
+- `get_edge_colors_by_type(G, theme)` / `get_edge_widths_by_type(G)` - Maps OSM highway tags to styling
 - `load_theme()` - Loads JSON theme with fallback defaults
 
 ## Theme System
