@@ -3,3 +3,4 @@ env/
 .env/
 posters/
 .DS_Store
+__pycache__/
