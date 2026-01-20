@@ -1,15 +1,17 @@
-import osmnx as ox
-import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
-import matplotlib.colors as mcolors
-import numpy as np
-from geopy.geocoders import Nominatim
-from tqdm import tqdm
-import time
+import argparse
+from datetime import datetime
 import json
 import os
-from datetime import datetime
-import argparse
+import sys
+import time
+
+from geopy.geocoders import Nominatim
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+import numpy as np
+import osmnx as ox
+from tqdm import tqdm
 
 THEMES_DIR = "themes"
 FONTS_DIR = "fonts"
@@ -435,27 +437,27 @@ Examples:
     args = parser.parse_args()
     
     # If no arguments provided, show examples
-    if len(os.sys.argv) == 1:
+    if len(sys.argv) == 1:
         print_examples()
-        os.sys.exit(0)
+        sys.exit(0)
     
     # List themes if requested
     if args.list_themes:
         list_themes()
-        os.sys.exit(0)
+        sys.exit(0)
     
     # Validate required arguments
     if not args.city or not args.country:
         print("Error: --city and --country are required.\n")
         print_examples()
-        os.sys.exit(1)
+        sys.exit(1)
     
     # Validate theme exists
     available_themes = get_available_themes()
     if args.theme not in available_themes:
         print(f"Error: Theme '{args.theme}' not found.")
         print(f"Available themes: {', '.join(available_themes)}")
-        os.sys.exit(1)
+        sys.exit(1)
     
     print("=" * 50)
     print("City Map Poster Generator")
@@ -478,4 +480,4 @@ Examples:
         print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
-        os.sys.exit(1)
+        sys.exit(1)
