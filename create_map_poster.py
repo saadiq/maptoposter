@@ -20,6 +20,17 @@ THEMES_DIR = "themes"
 FONTS_DIR = "fonts"
 POSTERS_DIR = "posters"
 
+# Geographic constants
+METERS_PER_DEGREE_LAT = 111000  # Approximate meters per degree of latitude
+
+# Coastline processing constants
+COASTLINE_BUFFER_MULT = 1.5    # Fetch coastlines from larger area for completeness
+MIN_POLYGON_AREA = 1e-10       # Minimum area to consider a polygon valid
+SEA_MIN_AREA_RATIO = 0.1       # Sea must be at least 10% of bounding box
+SEA_MIN_SHARED_BOUNDARY = 0.01 # Minimum shared boundary length with land
+ISLAND_MAX_AREA_RATIO = 0.2    # Polygons under 20% of bbox are likely islands
+
+
 def load_fonts():
     """
     Load Roboto fonts from the fonts directory.
@@ -184,6 +195,8 @@ def get_edge_colors_by_type(G):
     Assigns colors to edges based on road type hierarchy.
     Returns a list of colors corresponding to each edge in the graph.
     """
+    if THEME is None:
+        raise RuntimeError("THEME not loaded. Call load_theme() before get_edge_colors_by_type().")
     edge_colors = []
     for u, v, data in G.edges(data=True):
         highway = get_highway_type(data)
@@ -256,13 +269,14 @@ def extract_clipped_linestrings(geom, clip_poly):
 def fetch_land_polygon(point, dist):
     """
     Fetch land polygon using OSM coastline data for accurate alignment with roads.
-    Falls back to Natural Earth data if OSM coastlines unavailable.
+
+    For inland cities (no coastline found), returns the entire bounding box as land.
     Returns a GeoDataFrame with land geometry, or None on error.
     """
     lat, lon = point
     # Convert meters to approximate degrees
-    lat_delta = dist / 111000
-    lon_delta = dist / (111000 * np.cos(np.radians(lat)))
+    lat_delta = dist / METERS_PER_DEGREE_LAT
+    lon_delta = dist / (METERS_PER_DEGREE_LAT * np.cos(np.radians(lat)))
 
     bbox_poly = box(
         lon - lon_delta, lat - lat_delta,
@@ -276,7 +290,7 @@ def fetch_land_polygon(point, dist):
         coastlines = ox.features_from_point(
             point,
             tags={'natural': 'coastline'},
-            dist=int(dist * 1.5)
+            dist=int(dist * COASTLINE_BUFFER_MULT)
         )
 
         if coastlines is None or coastlines.empty:
@@ -316,7 +330,7 @@ def fetch_land_polygon(point, dist):
         for p in polygons:
             if p.is_valid and not p.is_empty and p.area > 0:
                 clipped = p.intersection(bbox_poly)
-                if not clipped.is_empty and clipped.area > 1e-10:
+                if not clipped.is_empty and clipped.area > MIN_POLYGON_AREA:
                     valid_polys.append(clipped)
 
         if not valid_polys:
@@ -345,11 +359,11 @@ def fetch_land_polygon(point, dist):
         sea_area = 0
         for poly in other_polys:
             area_ratio = poly.area / bbox_poly.area
-            if area_ratio > 0.1 and poly.area > sea_area:
+            if area_ratio > SEA_MIN_AREA_RATIO and poly.area > sea_area:
                 # Check if this polygon borders the main land (shares coastline)
                 # If it shares a long boundary with main_land, it's likely sea
                 shared = poly.boundary.intersection(main_land.boundary).length
-                if shared > 0.01:  # Has meaningful shared boundary with land
+                if shared > SEA_MIN_SHARED_BOUNDARY:
                     sea_poly = poly
                     sea_area = poly.area
 
@@ -360,9 +374,9 @@ def fetch_land_polygon(point, dist):
                 continue  # Skip the identified sea polygon
 
             area_ratio = poly.area / bbox_poly.area
-            # Small polygons (< 20% of bbox) are likely islands/land
+            # Small polygons are likely islands/land
             # Or if they don't share boundary with sea, they're land
-            if area_ratio < 0.2:
+            if area_ratio < ISLAND_MAX_AREA_RATIO:
                 land_polys.append(poly)
             elif sea_poly is not None:
                 shared_with_sea = poly.boundary.intersection(sea_poly.boundary).length
@@ -381,6 +395,8 @@ def fetch_land_polygon(point, dist):
         return None
 
 def create_poster(city, country, point, dist, output_file, show_land=True):
+    if THEME is None:
+        raise RuntimeError("THEME not loaded. Call load_theme() before create_poster().")
     print(f"\nGenerating map for {city}, {country}...")
 
     # Progress bar for data fetching
